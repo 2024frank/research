@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { theme } from '../styles/theme';
@@ -38,10 +38,45 @@ const Logo = styled(Link)`
   }
 `;
 
-const NavLinks = styled.div`
+const NavLinks = styled.div<{ isOpen: boolean }>`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.xl};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    background-color: ${theme.colors.white};
+    flex-direction: column;
+    padding: ${theme.spacing.xl} 0;
+    gap: ${theme.spacing.lg};
+    box-shadow: ${theme.shadows.md};
+    transform: ${props => props.isOpen ? 'translateY(0)' : 'translateY(-100vh)'};
+    opacity: ${props => props.isOpen ? 1 : 0};
+    transition: all 0.3s ease;
+    z-index: 999;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+`;
+
+const MobileNavScroll = styled.div`
+  @media (max-width: ${theme.breakpoints.md}) {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 ${theme.spacing.xl};
+    margin: ${theme.spacing.sm} 0;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    scrollbar-width: none;
+  }
 `;
 
 const NavLink = styled(Link)<{ active: boolean }>`
@@ -51,6 +86,12 @@ const NavLink = styled(Link)<{ active: boolean }>`
   text-decoration: none;
   font-weight: ${props => props.active ? '600' : '400'};
   position: relative;
+  white-space: nowrap;
+  padding: ${theme.spacing.sm} ${theme.spacing.base};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding: ${theme.spacing.base} ${theme.spacing.xl};
+  }
   
   &:after {
     content: '';
@@ -81,6 +122,21 @@ const MobileMenuButton = styled.button`
   }
 `;
 
+const Overlay = styled.div<{ isOpen: boolean }>`
+  display: none;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    display: ${props => props.isOpen ? 'block' : 'none'};
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+  }
+`;
+
 const Header: React.FC = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -89,23 +145,46 @@ const Header: React.FC = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
   
+  // Close mobile menu when clicking outside of it
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [mobileMenuOpen]);
+  
+  // Close mobile menu when changing routes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location]);
+  
   return (
     <HeaderContainer>
       <Nav>
         <Logo to="/">Micro-Agriculture</Logo>
         
-        <MobileMenuButton onClick={toggleMobileMenu}>
+        <MobileMenuButton onClick={(e) => { e.stopPropagation(); toggleMobileMenu(); }}>
           {mobileMenuOpen ? '✕' : '☰'}
         </MobileMenuButton>
         
-        <NavLinks>
-          <NavLink to="/" active={location.pathname === '/'}>Home</NavLink>
-          <NavLink to="/team" active={location.pathname === '/team'}>Team</NavLink>
-          <NavLink to="/research" active={location.pathname === '/research'}>Research</NavLink>
-          <NavLink to="/methods" active={location.pathname === '/methods'}>Methods</NavLink>
-          <NavLink to="/research/results" active={location.pathname === '/research/results'}>Research Results</NavLink>
+        <NavLinks isOpen={mobileMenuOpen}>
+          <MobileNavScroll>
+            <NavLink to="/" active={location.pathname === '/'}>Home</NavLink>
+            <NavLink to="/team" active={location.pathname === '/team'}>Team</NavLink>
+            <NavLink to="/research" active={location.pathname === '/research'}>Research</NavLink>
+            <NavLink to="/methods" active={location.pathname === '/methods'}>Methods</NavLink>
+            <NavLink to="/research/results" active={location.pathname === '/research/results'}>Research Results</NavLink>
+          </MobileNavScroll>
         </NavLinks>
       </Nav>
+      <Overlay isOpen={mobileMenuOpen} onClick={() => setMobileMenuOpen(false)} />
     </HeaderContainer>
   );
 };
